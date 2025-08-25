@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFmpeg Bot Example</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #111; color: #eee; padding: 20px; }
+  input, button, select, textarea { display: block; margin: 10px 0; width: 100%; padding: 5px; }
+  video { max-width: 600px; margin-top: 20px; display: block; }
+</style>
+</head>
+<body>
+
+<h1>FFmpeg Bot Example</h1>
+
+<label>Choose a video/audio file:</label>
+<input type="file" id="fileInput" accept="video/*,audio/*">
+
+<label>FFmpeg Command:</label>
+<textarea id="ffmpegCmd" placeholder='Example: "-vf scale=320:240 output.mp4"'></textarea>
+
+<button id="runFFmpeg">Run FFmpeg</button>
+<video id="videoPreview" controls></video>
+
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.1/dist/ffmpeg.min.js"></script>
+<script>
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: true });
+
+const fileInput = document.getElementById('fileInput');
+const ffmpegCmd = document.getElementById('ffmpegCmd');
+const runFFmpegBtn = document.getElementById('runFFmpeg');
+const videoPreview = document.getElementById('videoPreview');
+
+let inputFileName = '';
+let outputFileName = 'output.mp4';
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    inputFileName = file.name;
+    videoPreview.src = URL.createObjectURL(file);
+  }
+});
+
+runFFmpegBtn.addEventListener('click', async () => {
+  if (!inputFileName) return alert("Please select a file first.");
+  
+  await ffmpeg.load();
+
+  // Write the file to the FFmpeg FS
+  ffmpeg.FS('writeFile', inputFileName, await fetchFile(fileInput.files[0]));
+
+  // Parse command
+  const cmdText = ffmpegCmd.value.trim();
+  let args = [];
+  if (cmdText) {
+    args = cmdText.split(' ');
+  } else {
+    alert("Please enter FFmpeg command.");
+    return;
+  }
+
+  try {
+    await ffmpeg.run(...args);
+
+    // Get output file name from command
+    outputFileName = args[args.length - 1];
+
+    const data = ffmpeg.FS('readFile', outputFileName);
+    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+
+    // Show processed video
+    videoPreview.src = url;
+
+    // Optional: auto-download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outputFileName;
+    a.click();
+
+  } catch (err) {
+    console.error(err);
+    alert('Error running FFmpeg command.');
+  }
+});
+</script>
+
+</body>
+</html>
