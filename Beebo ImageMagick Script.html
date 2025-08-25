@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImageMagick Bot Example</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #111; color: #eee; padding: 20px; }
+  input, button, select, textarea { display: block; margin: 10px 0; width: 100%; padding: 5px; }
+  img { max-width: 600px; margin-top: 20px; display: block; }
+</style>
+</head>
+<body>
+
+<h1>ImageMagick Bot Example</h1>
+
+<label>Choose an image:</label>
+<input type="file" id="imageInput" accept="image/*">
+
+<label>ImageMagick Command:</label>
+<textarea id="imCmd" placeholder='Example: "convert input.png -resize 300x300 output.png"'></textarea>
+
+<button id="runIM">Run ImageMagick</button>
+
+<img id="preview" alt="Processed Image">
+
+<script src="https://cdn.jsdelivr.net/npm/@imagemagick/wasm@0.2.0/dist/imagemagick.min.js"></script>
+<script>
+const { ImageMagick } = window;
+
+const imageInput = document.getElementById('imageInput');
+const imCmd = document.getElementById('imCmd');
+const runBtn = document.getElementById('runIM');
+const preview = document.getElementById('preview');
+
+let inputFileName = '';
+let outputFileName = 'output.png';
+let imageData = null;
+
+imageInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    inputFileName = file.name;
+    imageData = await file.arrayBuffer();
+    preview.src = URL.createObjectURL(file);
+  }
+});
+
+runBtn.addEventListener('click', async () => {
+  if (!imageData) return alert('Please select an image first.');
+  
+  const cmdText = imCmd.value.trim();
+  if (!cmdText) return alert('Please enter an ImageMagick command.');
+
+  // Parse command, replace input/output names
+  const args = cmdText.split(' ').map(arg => arg.replace('input.png', inputFileName).replace('output.png', outputFileName));
+
+  try {
+    const result = await ImageMagick.read(imageData, args);
+    const blob = new Blob([result], { type: 'image/png' });
+    const url = URL.createObjectURL(blob);
+
+    preview.src = url;
+
+    // Optional download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outputFileName;
+    a.click();
+    
+  } catch (err) {
+    console.error(err);
+    alert('Error running ImageMagick command.');
+  }
+});
+</script>
+
+</body>
+</html>
